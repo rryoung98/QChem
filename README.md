@@ -6,3 +6,6 @@ Reading and Coding about QChem
 - Pick up where Qidong left off?
 - Make sense of the project, start to dig in the libraries and understand the physics.
 - Begin to tackle the problem.
+
+
+Check out qidong's stuff after APS1
