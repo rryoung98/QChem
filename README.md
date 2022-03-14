@@ -10,3 +10,5 @@ Reading and Coding about QChem
 
 Check out qidong's stuff after APS1
 https://arxiv.org/abs/2203.04666
+
+Fix openfermion notebook!
