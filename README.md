@@ -19,3 +19,6 @@ More unnecessary commits!
 
 Exhaudesdddadsfsf
 asdfsd
+
+
+Pivoting to QML!!! We need to read the papers Alberto sent
