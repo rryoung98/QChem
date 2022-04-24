@@ -49,3 +49,5 @@ results = QMLBenchmarker.benchmark(tensorflow, type="tensorflow")
 
 We'll make sure the benchmark results are rigorous taking inspiration from:
 https://ogb.stanford.edu/docs/leader_overview/
+
+https://media.neurips.cc/Conferences/NeurIPS2021/Styles/neurips_2021.pdf
