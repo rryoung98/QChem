@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from cirq.contrib.svg import SVGCircuit
 import pennylane as qml
 
-from qcnn_layers import ccwyy_qconv_layer
+from qcnn_layers import ccwyy_qconv_layer,mera_circuit
 from embeddings import angle_embed_image
 # CONSTANTS
 NUM_EXAMPLES=500
@@ -138,22 +138,28 @@ x_train_small_256 = tf.image.resize(x_train, (2,2)).numpy()
 x_test_small_256 = tf.image.resize(x_test, (2,2)).numpy()
 
 
-print(x_train_small_256[0])
+print(x_train_small_256[0],'\n testing')
 # x_train_circ = [angle_embed_image(x) for x in x_train_small_256]
 # x_test_circ = [angle_embed_image(x) for x in x_test_small_256]
 
-dev1 = qml.device('default.mixed', wires = 4)
+dev1 = qml.device('default.mixed', wires = 5)
 # qnode2 = qml.QNode(x_train_circ[0], dev1, interface='tf')
-n_qubits = 3
+n_qubits = 4
 n_layers = 2
 weight_shapes = {"weights": (n_layers, n_qubits)}
 
+n_wires = 4
+n_block_wires = 2
+n_params_block = 2
+n_blocks =3
+template_weights = [[0.1,-0.3]]*n_blocks
 
 @qml.qnode(dev1)
 def circuit(inputs, weights):
     #inputs = tf.cast(inputs, tf.complex128)
     angle_embed_image(inputs)
     ccwyy_qconv_layer([0,1,2,3],weights)
+    mera_circuit(n_wires, n_block_wires, n_params_block, n_blocks, template_weights)
     return qml.expval(qml.PauliZ(0))
 print()
 
@@ -161,13 +167,18 @@ weights = tf.Variable([0.5, 0.1,0.1,3.0], dtype=tf.float64)
 
 
 # # Build the Keras model.
+print(type(y_train),'ricky')
+y_train_onehot = tf.one_hot(y_train,depth=1,dtype=tf.float64)
+layer_1 = tf.keras.layers.Dense(4, activation='relu')
+layer_2 = tf.keras.layers.Dense(1, activation="softmax", input_shape=(5,3),dtype=tf.float64)
+batch_norm = tf.keras.layers.BatchNormalization()
 
-layer_1 = tf.keras.layers.Dense((5,2,2))
-layer_2 = tf.keras.layers.Dense(2, activation="softmax")
-qlayer = qml.qnn.KerasLayer(circuit, weight_shapes, output_dim=n_qubits)
-model = tf.keras.Sequential([tf.keras.layers.Input(shape=(), dtype=tf.float32),qlayer,layer_1,layer_2])
-opt = tf.keras.optimizers.Adam(learning_rate=0.02)
-model.compile(opt, loss="mse", metrics=["accuracy"])
+avg_pooling = tf.keras.layers.AveragePooling2D(pool_size=(1,2))
+flatten=       tf.keras.layers.Flatten()
+qlayer = qml.qnn.KerasLayer(circuit, weight_shapes, output_dim=n_qubits,dtype=tf.float64)
+model = tf.keras.Sequential([tf.keras.layers.Input(shape=(),batch_size=5,  dtype=tf.float64),qlayer,flatten,layer_2])
+opt = tf.keras.optimizers.SGD(learning_rate=0.02)
+print(x_train_small_256[0].shape)
+model.compile(opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=["accuracy"])
 model.summary()
-
-fitting = model.fit(x_train_small_256, y_train, epochs=6, batch_size=5, validation_split=0.25, verbose=2)
+fitting = model.fit(x_train_small_256, y_train_onehot, epochs=1, batch_size=5, validation_split=0.25, verbose=2)

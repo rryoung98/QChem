@@ -58,6 +58,7 @@ def ccwyy_qconv_layer( wires,weights,):  # pylint: disable=arguments-differ
             else:
                 qml.CNOT(wires=[wires[i], wires[0]])
     print(weights, 'weights')
+    print(weights.shape, 'weights.shape')
     for i in range(len(wires)):  # pylint: disable=consider-using-enumerate
             qml.Rot(
                 weights[0][0],
@@ -86,10 +87,10 @@ def block(weights, wires):
 #     return qml.expval(qml.PauliZ(wires=7))
 
 
-# def MERAblock(weights, wires):
-#     qml.CNOT(wires=[wires[0],wires[1]])
-#     qml.RY(weights[0], wires=wires[0])
-#     qml.RY(weights[1], wires=wires[1])
+def MERAblock(weights, wires):
+    qml.CNOT(wires=[wires[0],wires[1]])
+    qml.RY(weights[0], wires=wires[0])
+    qml.RY(weights[1], wires=wires[1])
 
 # n_wires = 4
 # n_block_wires = 2
@@ -98,8 +99,11 @@ def block(weights, wires):
 # template_weights = [[0.1,-0.3]]*n_blocks
 
 # dev= qml.device('default.qubit',wires=range(n_wires))
+def MERAblock(weights, wires):
+        qml.CNOT(wires=[wires[0],wires[1]])
+        qml.RY(weights[0], wires=wires[0])
+        qml.RY(weights[1], wires=wires[1])
+def mera_circuit(template_weights,n_wires,n_block_wires,n_params_block,n_blocks):
+    qml.MERA(range(n_wires),n_block_wires, MERAblock, n_params_block, template_weights)
+    print("MERA circuit")
 
-# @qml.qnode(dev)
-# def circuit(template_weights):
-#     qml.MERA(range(n_wires),n_block_wires,MERAblock, n_params_block, template_weights)
-#     return qml.expval(qml.PauliZ(wires=1))
