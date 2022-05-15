@@ -4,8 +4,8 @@ import pennylane as qml
 
 
 
-def angle_embed_image(image):
-    values = np.ndarray.flatten(image.numpy())
+def angle_embed_image(input):
+    values = np.ndarray.flatten(input.numpy())
     for i, value in enumerate(values):
         x_i = np.arctan(value)
         x_i_squared = np.arctan(value**2)

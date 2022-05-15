@@ -57,8 +57,6 @@ def ccwyy_qconv_layer( wires,weights,):  # pylint: disable=arguments-differ
                 qml.CNOT(wires=[wires[i], wires[i + 1]])
             else:
                 qml.CNOT(wires=[wires[i], wires[0]])
-    print(weights, 'weights')
-    print(weights.shape, 'weights.shape')
     for i in range(len(wires)):  # pylint: disable=consider-using-enumerate
             qml.Rot(
                 weights[0][0],
@@ -66,31 +64,29 @@ def ccwyy_qconv_layer( wires,weights,):  # pylint: disable=arguments-differ
                 weights[0][2],
                 wires=wires[i],
             )
-        
+    print(weights, 'weights')
+    print(weights.shape, 'weights.shape')
 
 def block(weights, wires):
     qml.RX(weights[0], wires=wires[0])
     qml.RX(weights[1], wires=wires[1])
-    qml.CNOT(wires=wires)
-
-# def ttn_layer(weights):  # pylint: disable=arguments-differ
-#     '''
-#     This is the template for a single layer of the TTN network.
-#     '''
-#     qml.TTN(
-#         wires=range(8),
-#         n_block_wires=2,
-#         block=block,
-#         n_params_block=2,
-#         template_weights=weights,
-#     )
-#     return qml.expval(qml.PauliZ(wires=7))
-
-
-def MERAblock(weights, wires):
     qml.CNOT(wires=[wires[0],wires[1]])
-    qml.RY(weights[0], wires=wires[0])
-    qml.RY(weights[1], wires=wires[1])
+
+def ttn_layer(n_wires,weights):  # pylint: disable=arguments-differ
+    '''
+    This is the template for a single layer of the TTN network.
+    '''
+    print(weights)
+    qml.TTN(
+        wires=range(n_wires),
+        n_block_wires=4,
+        block=block,
+        n_params_block=4,
+        template_weights=[weights[0]],
+    )
+
+
+
 
 # n_wires = 4
 # n_block_wires = 2
@@ -101,9 +97,9 @@ def MERAblock(weights, wires):
 # dev= qml.device('default.qubit',wires=range(n_wires))
 def MERAblock(weights, wires):
         qml.CNOT(wires=[wires[0],wires[1]])
-        qml.RY(weights[0], wires=wires[0])
-        qml.RY(weights[1], wires=wires[1])
-def mera_circuit(template_weights,n_wires,n_block_wires,n_params_block,n_blocks):
-    qml.MERA(range(n_wires),n_block_wires, MERAblock, n_params_block, template_weights)
-    print("MERA circuit")
+        qml.RY(weights[0][0], wires=wires[0])
+        qml.RY(weights[0][1], wires=wires[1])
+def mera_circuit(template_weights,n_wires,n_block_wires,n_params_block):
+    qml.MERA(range(n_wires),n_block_wires, block, n_params_block, [template_weights[0]])
+    print(qml.MERA.get_n_blocks(range(n_wires),n_block_wires))
 

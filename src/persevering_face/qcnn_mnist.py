@@ -1,3 +1,4 @@
+from re import T
 import numpy as np
 import sympy
 
@@ -9,8 +10,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from cirq.contrib.svg import SVGCircuit
 import pennylane as qml
-
-from qcnn_layers import ccwyy_qconv_layer,mera_circuit
+from qcnn_layers import ccwyy_qconv_layer,mera_circuit,ttn_layer
 from embeddings import angle_embed_image
 # CONSTANTS
 NUM_EXAMPLES=500
@@ -146,30 +146,44 @@ dev1 = qml.device('default.mixed', wires = 5)
 # qnode2 = qml.QNode(x_train_circ[0], dev1, interface='tf')
 n_qubits = 4
 n_layers = 2
-weight_shapes = {"weights": (n_layers, n_qubits)}
+weight_shapes = {"weights": (1, 3)}
 
 n_wires = 4
-n_block_wires = 2
-n_params_block = 2
-n_blocks =3
-template_weights = [[0.1,-0.3]]*n_blocks
-
+n_block_wires = 4
+n_params_block = 4
+n_blocks = qml.MERA.get_n_blocks(range(n_wires),n_block_wires)
+template_weights = [[0.1,0.1,0.1,-0.3]]*n_blocks
+print(n_blocks)
 @qml.qnode(dev1)
 def circuit(inputs, weights):
     #inputs = tf.cast(inputs, tf.complex128)
     angle_embed_image(inputs)
     ccwyy_qconv_layer([0,1,2,3],weights)
-    mera_circuit(n_wires, n_block_wires, n_params_block, n_blocks, template_weights)
-    return qml.expval(qml.PauliZ(0))
-print()
 
+    # just try ttn and mera
+    # mera_circuit figure out how to make trainable. 
+    # Create classical model.
+    # Add more samples, adjust batch size, and see if it works.
+    # Add more layers, and see if it works.
+    # Add more qubits, and see if it works.
+    # Register # of parameters.
+    #  
+    mera_circuit(template_weights,n_wires, n_block_wires, n_params_block)
+    ttn_layer(n_wires,template_weights)
+
+    ttn_layer(n_wires,template_weights)
+    return qml.expval(qml.PauliZ(0))
+
+    
+    
+    # trainiable, not able to use on MERA and TTN, 
 weights = tf.Variable([0.5, 0.1,0.1,3.0], dtype=tf.float64)
 
 
 # # Build the Keras model.
-print(type(y_train),'ricky')
+
 y_train_onehot = tf.one_hot(y_train,depth=1,dtype=tf.float64)
-layer_1 = tf.keras.layers.Dense(4, activation='relu')
+#layer_1 = tf.keras.layers.Dense(4, activation='relu')
 layer_2 = tf.keras.layers.Dense(1, activation="softmax", input_shape=(5,3),dtype=tf.float64)
 batch_norm = tf.keras.layers.BatchNormalization()
 
@@ -181,4 +195,4 @@ opt = tf.keras.optimizers.SGD(learning_rate=0.02)
 print(x_train_small_256[0].shape)
 model.compile(opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=["accuracy"])
 model.summary()
-fitting = model.fit(x_train_small_256, y_train_onehot, epochs=1, batch_size=5, validation_split=0.25, verbose=2)
+fitting = model.fit(x_train_small_256, y_train_onehot, epochs=6, batch_size=5, validation_split=0.25, verbose=2)
