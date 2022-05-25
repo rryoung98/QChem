@@ -59,9 +59,9 @@ def ccwyy_qconv_layer( wires,weights,):  # pylint: disable=arguments-differ
                 qml.CNOT(wires=[wires[i], wires[0]])
     for i in range(len(wires)):  # pylint: disable=consider-using-enumerate
             qml.Rot(
-                weights[0][0],
-                weights[0][1],
-                weights[0][2],
+                weights[i][0],
+                weights[i][1],
+                weights[i][2],
                 wires=wires[i],
             )
     print(weights, 'weights')
@@ -72,17 +72,20 @@ def block(weights, wires):
     qml.RX(weights[1], wires=wires[1])
     qml.CNOT(wires=[wires[0],wires[1]])
 
-def ttn_layer(n_wires,weights):  # pylint: disable=arguments-differ
+def ttn_layer(n_wires,weights, n_params_block=4):  # pylint: disable=arguments-differ
     '''
     This is the template for a single layer of the TTN network.
     '''
-    print(weights)
+    # print(weights)
+    # ttn_weights = weights*n_params_bloc
+    # print(ttn_weights)
+    # weights should be [qubit length, block length]
     qml.TTN(
         wires=range(n_wires),
         n_block_wires=4,
         block=block,
-        n_params_block=4,
-        template_weights=[weights[0]],
+        n_params_block=n_params_block,
+        template_weights=weights,
     )
 
 

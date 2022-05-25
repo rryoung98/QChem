@@ -1,17 +1,12 @@
-from re import T
+import collections
 import numpy as np
-import sympy
-
-import cirq
 import tensorflow as tf
-# import tensorflow_quantum as tfq
 
-# visualization tools
-import matplotlib.pyplot as plt
-from cirq.contrib.svg import SVGCircuit
+# quantum machine learning stuff
 import pennylane as qml
 from qcnn_layers import ccwyy_qconv_layer,mera_circuit,ttn_layer
-from embeddings import angle_embed_image
+from embeddings import angle_embed_image,angle_embed_images
+
 # CONSTANTS
 NUM_EXAMPLES=500
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
@@ -21,6 +16,7 @@ x_train, x_test = x_train[..., np.newaxis]/255.0, x_test[..., np.newaxis]/255.0
 
 print("Number of original training examples:", len(x_train))
 print("Number of original test examples:", len(x_test))
+
 
 def filter_36(x, y):
     keep = (y == 3) | (y == 6)
@@ -33,6 +29,7 @@ x_test, y_test = filter_36(x_test, y_test)
 
 print("Number of filtered training examples:", len(x_train))
 print("Number of filtered test examples:", len(x_test))
+
 
 def build_set(x, y, desired_size, t_rate):
     assert len(x) == len(y)
@@ -66,8 +63,8 @@ def build_set(x, y, desired_size, t_rate):
     return np.array(res_x), np.array(res_y)
 
 # We do a lot of computation so we want to limit the number of examples ASAP
-x_train, y_train = build_set(x_train, y_train, NUM_EXAMPLES, 0.3)
-x_test, y_test = build_set(x_test, y_test, NUM_EXAMPLES, 0.7)
+# x_train, y_train = build_set(x_train, y_train, NUM_EXAMPLES, 0.3)
+# x_test, y_test = build_set(x_test, y_test, NUM_EXAMPLES, 0.7)
 
 
 print(np.count_nonzero(y_train) / NUM_EXAMPLES)
@@ -111,7 +108,39 @@ print("type of x_train is " + str(type(x_train)))
 print("shape of x_test is " + str(x_test.shape))
 print("type of x_test is " + str(type(x_test)))
 
+def remove_contradicting(xs, ys):
+    mapping = collections.defaultdict(set)
+    orig_x = {}
+    # Determine the set of labels for each unique image:
+    for x,y in zip(xs,ys):
+       orig_x[tuple(x.flatten())] = x
+       mapping[tuple(x.flatten())].add(y)
+    
+    new_x = []
+    new_y = []
+    for flatten_x in mapping:
+      x = orig_x[flatten_x]
+      labels = mapping[flatten_x]
+      if len(labels) == 1:
+          new_x.append(x)
+          new_y.append(next(iter(labels)))
+      else:
+          # Throw out images that match more than one label.
+          pass
+    
+    num_uniq_3 = sum(1 for value in mapping.values() if len(value) == 1 and True in value)
+    num_uniq_6 = sum(1 for value in mapping.values() if len(value) == 1 and False in value)
+    num_uniq_both = sum(1 for value in mapping.values() if len(value) == 2)
 
+    print("Number of unique images:", len(mapping.values()))
+    print("Number of unique 3s: ", num_uniq_3)
+    print("Number of unique 6s: ", num_uniq_6)
+    print("Number of unique contradicting labels (both 3 and 6): ", num_uniq_both)
+    print()
+    print("Initial number of images: ", len(xs))
+    print("Remaining non-contradicting unique images: ", len(new_x))
+    
+    return np.array(new_x), np.array(new_y)
 #store the deskwed x_train into a list x_train_deskew
 #store the deskwed x_test into a list x_test_deskew
 
@@ -133,32 +162,33 @@ x_test_deskew = x_test_deskew[..., np.newaxis]
 print("shape of x_test_deskew is " + str(np.shape(x_test_deskew)))
 print("type of x_test_deskew is " + str(type(x_test_deskew)))
 
-# 16x16 for angle embedding!
-x_train_small_256 = tf.image.resize(x_train, (2,2)).numpy()
-x_test_small_256 = tf.image.resize(x_test, (2,2)).numpy()
+# 3x3 for angle embedding!
+x_train_small_256 = tf.image.resize(x_train, (4,4)).numpy()
+x_test_small_256 = tf.image.resize(x_test, (4,4)).numpy()
 
+# Remove the images that are contradicting.
+x_train_nocon, y_train_nocon = remove_contradicting(x_train_small_256, y_train)
+# Angle embedding
+#x_train_circ = angle_embed_images(x_train_small_256)
+#x_test_circ = angle_embed_images(x_test_small_256)
 
-print(x_train_small_256[0],'\n testing')
-# x_train_circ = [angle_embed_image(x) for x in x_train_small_256]
-# x_test_circ = [angle_embed_image(x) for x in x_test_small_256]
+# CONSTANTS
+NUM_EPOCHS = 10
+BATCH_SIZE = 64
+INPUT_SHAPE = (4,4,1)
+WEIGHT_SHAPES = {'weights':(1,4)} # (1,qubits)
+N_QUBITS = 4
+
 
 dev1 = qml.device('default.mixed', wires = 5)
-# qnode2 = qml.QNode(x_train_circ[0], dev1, interface='tf')
-n_qubits = 4
-n_layers = 2
-weight_shapes = {"weights": (1, 3)}
 
-n_wires = 4
-n_block_wires = 4
-n_params_block = 4
-n_blocks = qml.MERA.get_n_blocks(range(n_wires),n_block_wires)
-template_weights = [[0.1,0.1,0.1,-0.3]]*n_blocks
-print(n_blocks)
 @qml.qnode(dev1)
 def circuit(inputs, weights):
-    #inputs = tf.cast(inputs, tf.complex128)
+    print(inputs)
+    inputs = tf.cast(inputs, tf.complex128)
     angle_embed_image(inputs)
-    ccwyy_qconv_layer([0,1,2,3],weights)
+    # ccwyy_qconv_layer([0,1,2,3],weights)
+    # ccwyy_qconv_layer([0,1,2,3],weights)
 
     # just try ttn and mera
     # mera_circuit figure out how to make trainable. 
@@ -168,31 +198,58 @@ def circuit(inputs, weights):
     # Add more qubits, and see if it works.
     # Register # of parameters.
     #  
-    mera_circuit(template_weights,n_wires, n_block_wires, n_params_block)
-    ttn_layer(n_wires,template_weights)
+    #mera_circuit(template_weights,n_wires, n_block_wires, n_params_block)
+    ttn_layer(N_QUBITS,weights)
+    ttn_layer(N_QUBITS,weights)
+    ttn_layer(N_QUBITS,weights)
 
-    ttn_layer(n_wires,template_weights)
+    # ttn_layer(n_wires,template_weights)
     return qml.expval(qml.PauliZ(0))
 
     
-    
-    # trainiable, not able to use on MERA and TTN, 
-weights = tf.Variable([0.5, 0.1,0.1,3.0], dtype=tf.float64)
 
-
-# # Build the Keras model.
-
+# TRAIN
 y_train_onehot = tf.one_hot(y_train,depth=1,dtype=tf.float64)
-#layer_1 = tf.keras.layers.Dense(4, activation='relu')
-layer_2 = tf.keras.layers.Dense(1, activation="softmax", input_shape=(5,3),dtype=tf.float64)
-batch_norm = tf.keras.layers.BatchNormalization()
+y_test_onehot = tf.one_hot(y_test,depth=1,dtype=tf.float64)
 
-avg_pooling = tf.keras.layers.AveragePooling2D(pool_size=(1,2))
-flatten=       tf.keras.layers.Flatten()
-qlayer = qml.qnn.KerasLayer(circuit, weight_shapes, output_dim=n_qubits,dtype=tf.float64)
-model = tf.keras.Sequential([tf.keras.layers.Input(shape=(),batch_size=5,  dtype=tf.float64),qlayer,flatten,layer_2])
-opt = tf.keras.optimizers.SGD(learning_rate=0.02)
-print(x_train_small_256[0].shape)
+# LAYERS
+input_layer =   tf.keras.layers.Input(shape=INPUT_SHAPE, dtype=tf.float64)
+flatten_input = tf.keras.layers.Flatten()(input_layer)
+qlayer = qml.qnn.KerasLayer(circuit, WEIGHT_SHAPES, output_dim=N_QUBITS**2,dtype=tf.float64)(flatten_input)
+flatten= tf.keras.layers.Flatten()(qlayer)
+layer_2 = tf.keras.layers.Dense(1, activation="softmax", input_shape=(BATCH_SIZE,N_QUBITS**2),dtype=tf.float64)(flatten)
+
+# MODEL
+model = tf.keras.Model(inputs=input_layer, outputs=layer_2,name="mnist_quantum")
+opt = tf.keras.optimizers.Adam(learning_rate=0.01)
 model.compile(opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=["accuracy"])
 model.summary()
-fitting = model.fit(x_train_small_256, y_train_onehot, epochs=6, batch_size=5, validation_split=0.25, verbose=2)
+
+# FIT
+fitting = model.fit(x_train_small_256, y_train,  epochs=6, batch_size=BATCH_SIZE,  verbose=2, validation_data=(x_test_small_256, y_test))
+
+
+
+# CLASSICAL MODEL
+
+def create_fair_classical_model():
+    # A simple model based off LeNet from https://keras.io/examples/mnist_cnn/
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Flatten(input_shape=INPUT_SHAPE))
+    model.add(tf.keras.layers.Dense(2, activation='relu'))
+    model.add(tf.keras.layers.Dense(1))
+    return model
+
+
+model = create_fair_classical_model()
+model.compile(loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+              optimizer=tf.keras.optimizers.Adam(),
+              metrics=['accuracy'])
+
+model.summary()
+
+model.fit(x_train_small_256, y_train, 
+          batch_size=BATCH_SIZE,
+          epochs=100,
+          verbose=2,
+          validation_data=(x_test_small_256, y_test))
