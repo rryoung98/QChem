@@ -180,11 +180,11 @@ WEIGHT_SHAPES = {'weights':(1,4)} # (1,qubits)
 N_QUBITS = 4
 
 
-dev1 = qml.device('default.mixed', wires = 5)
+dev1 = qml.device('default.mixed', wires = [0,1,2,3])
 
 @qml.qnode(dev1)
 def circuit(inputs, weights):
-    print(inputs)
+    print(inputs,weights,'inputs 3x3, 4x4')
     inputs = tf.cast(inputs, tf.complex128)
     angle_embed_image(inputs)
     # ccwyy_qconv_layer([0,1,2,3],weights)
@@ -200,6 +200,7 @@ def circuit(inputs, weights):
     #  
     #mera_circuit(template_weights,n_wires, n_block_wires, n_params_block)
     ttn_layer(N_QUBITS,weights)
+    # 
     ttn_layer(N_QUBITS,weights)
     ttn_layer(N_QUBITS,weights)
 
@@ -226,6 +227,8 @@ model.compile(opt, loss=tf.keras.losses.BinaryCrossentropy(), metrics=["accuracy
 model.summary()
 
 # FIT
+x_flattened = tf.reshape(x_train_nocon,(x_train_nocon.shape[0],-1))
+x_test_flattened = tf.reshape(x_test_small_256,(x_test_small_256.shape[0],-1))
 fitting = model.fit(x_train_small_256, y_train,  epochs=6, batch_size=BATCH_SIZE,  verbose=2, validation_data=(x_test_small_256, y_test))
 
 
@@ -248,8 +251,8 @@ model.compile(loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
 
 model.summary()
 
-model.fit(x_train_small_256, y_train, 
-          batch_size=BATCH_SIZE,
-          epochs=100,
-          verbose=2,
-          validation_data=(x_test_small_256, y_test))
+#model.fit(x_train_small_256, y_train, 
+#   batch_size=BATCH_SIZE,
+#   epochs=100,
+#   verbose=2,
+#   validation_data=(x_test_small_256, y_test))
