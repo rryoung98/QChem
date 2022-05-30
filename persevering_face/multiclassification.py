@@ -1,10 +1,10 @@
 import collections
+import matplotlib as plt
 import numpy as np
 import tensorflow as tf
 
-# quantum machine learning stuff
-import pennylane as qml
-from qcnn_layers import ccwyy_qconv_layer,mera_circuit,ttn_layer
-from embeddings import angle_embed_image,angle_embed_images
 
+# CONSTANTS
+NUM_EXAMPLES=500
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
