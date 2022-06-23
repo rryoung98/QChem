@@ -4,10 +4,10 @@ import cirq
 import seaborn as sns
 import tensorflow as tf
 import tensorflow_quantum as tfq
-from sklearn.metrics import confusion_matrix
 
 from qosf.layers.circuit_layer_builder import CircuitLayerBuilder
 from qosf.data_loader.loader import DataCircuitLoader
+from qosf.metrics.validation_metrics import ConfusionMatrixCallback
 def create_quantum_model(qubits=10):
 
     """Create a QNN model circuit and readout operation to go along with it."""
@@ -48,7 +48,8 @@ def create_fair_classical_model():
 
 def train():
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-    data_circuit = DataCircuitLoader(x_train[:10], y_train[:10],x_test[:10], y_test[:10])
+    x_train, x_test = x_train[..., np.newaxis]/255.0, x_test[..., np.newaxis]/255.0
+    data_circuit = DataCircuitLoader(x_train[:500], y_train[:500],x_test[:500], y_test[:500])
     (x_train_circ, y_train_onehot), (x_test_circ, y_test_onehot)  = data_circuit.load()
     x_train_tfcirc = tfq.convert_to_tensor(x_train_circ)
     x_test_tfcirc = tfq.convert_to_tensor(x_test_circ)
@@ -65,7 +66,7 @@ def train():
     print("compiling model")
     model.compile(
     loss=tf.keras.losses.CategoricalCrossentropy(),
-    metrics=[tf.keras.metrics.CategoricalAccuracy()],
+    metrics=[tf.keras.metrics.CategoricalAccuracy(),],
     optimizer=tf.keras.optimizers.Adam(0.2))
 
     current_time = str(datetime.datetime.now().timestamp())
@@ -79,17 +80,22 @@ def train():
                     log_dir=train_log_dir, histogram_freq=1, profile_batch=3
                 )
     model_ckpt =  tf.keras.callbacks.ModelCheckpoint(
-                    path_for_checkpoint_callback, save_weights_only=False
+                    path_for_checkpoint_callback, save_weights_only=True
                 )
+    cm_callback= ConfusionMatrixCallback(
+                                       model=model,
+                                       validation_data=(x_test_tfcirc, y_test_onehot),
+                                       image_dir=f'./logs/images/' + current_time )
     print("fitting model")
+ 
     model.fit(x_train_tfcirc,
           y_train_onehot,
           batch_size=128,
-          epochs=1,
+          epochs=15,
           verbose=1,
           validation_data=(x_test_tfcirc, y_test_onehot),
-          callbacks=[reduce_lr,tensorboard]) 
-    qnn_results = model.evaluate(x_test_tfcirc[:10], y_test_onehot)
+          callbacks=[reduce_lr,tensorboard,model_ckpt,cm_callback]) 
+    qnn_results = model.evaluate(x_test_tfcirc, y_test_onehot)
 
     print("qnn_results:", qnn_results[1])
     # classical_model = create_fair_classical_model()
@@ -109,8 +115,8 @@ def train():
     print(qnn_results)
     y_pred = model.predict(x_test_tfcirc)
     y_pred = np.argmax(y_pred, axis=1)
+    print(y_pred, y_test[:10])
 
-    conf_mat = confusion_matrix(y_test, y_pred)
     # fair_nn_accuracy = fair_nn_results[1]
 
     sns.barplot(["Quantum"],
