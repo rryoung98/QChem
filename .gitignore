@@ -2,3 +2,9 @@
 .vscode/
 
 .pytest_cache/
+
+# egg info
+.egg-info
+
+# build
+/build
