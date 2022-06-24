@@ -4,7 +4,7 @@ from keras.callbacks import Callback
 import matplotlib.pyplot as plt
 import numpy as np
 from scikitplot.metrics import plot_confusion_matrix, plot_roc
-from sklearn.metrics import roc_auc_score, auc,accuracy_score
+import tensorflow as tf
 
 class ConfusionMatrixCallback(Callback):
     def __init__(self, model, validation_data, image_dir):
@@ -23,8 +23,9 @@ class ConfusionMatrixCallback(Callback):
         y_true_class = np.argmax(y_true_np, axis=1)
         # plot and save confusion matrix
         fig, ax = plt.subplots(figsize=(16,12))
-        print('cm expect',y_true_class,y_true_np.shape,y_pred_class,y_pred.shape)
         plot_confusion_matrix(y_true_class, y_pred_class, ax=ax)
+        tf.summary.image(f'confusion_matrix_epoch_{epoch}', fig, step=epoch)
         fig.savefig(os.path.join(self.image_dir, f'confusion_matrix_epoch_{epoch}'))
+   
 
 

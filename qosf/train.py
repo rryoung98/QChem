@@ -1,6 +1,7 @@
 import datetime
 import numpy as np
 import cirq
+import matplotlib.pyplot as plt
 import seaborn as sns
 import tensorflow as tf
 import tensorflow_quantum as tfq
@@ -91,7 +92,7 @@ def train():
     model.fit(x_train_tfcirc,
           y_train_onehot,
           batch_size=128,
-          epochs=15,
+          epochs=35,
           verbose=1,
           validation_data=(x_test_tfcirc, y_test_onehot),
           callbacks=[reduce_lr,tensorboard,model_ckpt,cm_callback]) 
@@ -115,13 +116,11 @@ def train():
     print(qnn_results)
     y_pred = model.predict(x_test_tfcirc)
     y_pred = np.argmax(y_pred, axis=1)
-    print(y_pred, y_test[:10])
 
     # fair_nn_accuracy = fair_nn_results[1]
-
     sns.barplot(["Quantum"],
                 [qnn_accuracy])
-
+    plt.savefig(f'../logs/images/{current_time}/qnn_accuracy.png')
 
 
 
